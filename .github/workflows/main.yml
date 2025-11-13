@@ -1,0 +1,101 @@
+import telebot
+from telebot import types
+
+# ===========================
+# 🔐 BOT SETTINGS
+# ===========================
+BOT_TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE"   # from @BotFather
+ADMIN_USERNAME = "Ongongo"                # your Telegram username without @
+MPESA_NUMBER = "0115070515"               # your M-Pesa number
+
+bot = telebot.TeleBot(BOT_TOKEN)
+
+# ===========================
+# 🏪 PRODUCTS LIST
+# ===========================
+products = {
+    "CCTV Camera": 2500,
+    "Wi-Fi Router": 1800,
+    "Solar Light": 1200,
+    "Network Cable (10m)": 800,
+}
+
+# ===========================
+# 🚀 START COMMAND
+# ===========================
+@bot.message_handler(commands=['start'])
+def start(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("🛍 View Products", "📞 Contact Support")
+    bot.send_message(
+        message.chat.id,
+        "👋 Welcome to *Afronet Market Store!*\n\n"
+        "We offer reliable electrical and networking products.\n"
+        "Choose an option below to continue:",
+        parse_mode="Markdown",
+        reply_markup=markup
+    )
+
+# ===========================
+# 🛍 VIEW PRODUCTS
+# ===========================
+@bot.message_handler(func=lambda m: m.text == "🛍 View Products")
+def show_products(message):
+    for name, price in products.items():
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton(f"🛒 Buy {name}", callback_data=f"buy_{name}"))
+        bot.send_message(
+            message.chat.id,
+            f"📦 *{name}*\n💰 Price: KES {price}\n",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+
+# ===========================
+# 💳 BUY PRODUCT
+# ===========================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("buy_"))
+def buy_product(call):
+    product_name = call.data[4:]
+    bot.send_message(
+        call.message.chat.id,
+        f"✅ To buy *{product_name}*, send KES {products[product_name]} to our M-Pesa number:\n\n"
+        f"📱 *{MPESA_NUMBER}*\n\n"
+        "After payment, tap '✅ I’ve Paid'.",
+        parse_mode="Markdown"
+    )
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("✅ I’ve Paid", "❌ Cancel")
+    bot.send_message(call.message.chat.id, "Waiting for your confirmation…", reply_markup=markup)
+
+# ===========================
+# ✅ PAYMENT CONFIRMATION
+# ===========================
+@bot.message_handler(func=lambda m: m.text == "✅ I’ve Paid")
+def confirm_payment(message):
+    bot.send_message(message.chat.id, "🎉 Thank you! Your payment will be verified soon.\nWe'll deliver your product or contact you shortly. 📦")
+    bot.send_message(
+        f"@{ADMIN_USERNAME}",
+        f"💰 *New Payment Alert!*\nFrom: @{message.from_user.username}\nChat ID: {message.chat.id}\nCheck M-Pesa for confirmation.",
+        parse_mode="Markdown"
+    )
+
+# ===========================
+# ❌ CANCEL
+# ===========================
+@bot.message_handler(func=lambda m: m.text == "❌ Cancel")
+def cancel(message):
+    bot.send_message(message.chat.id, "❎ Purchase cancelled. You can type /start to continue shopping.")
+
+# ===========================
+# 📞 CONTACT SUPPORT
+# ===========================
+@bot.message_handler(func=lambda m: m.text == "📞 Contact Support")
+def contact(message):
+    bot.send_message(message.chat.id, f"For help, contact @{ADMIN_USERNAME}.\nWe’ll respond shortly. 🤝")
+
+# ===========================
+# ▶️ RUN BOT
+# ===========================
+print("🤖 Afronet Market Bot is now running...")
+bot.polling()
